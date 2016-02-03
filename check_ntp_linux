@@ -1,0 +1,46 @@
+#!/bin/bash
+
+# Bash script for linux to verify if server time is synchronized with NTP
+# server. Script is returning strings "OK, Warning, Critical" or another
+# string with reason why it fails (NTP is not installed, NTP process is
+# stopped, NTP is runnig but not synchronized).
+#
+# Required packages: ntp
+#
+# Exit codes can be used by Centreon
+#   - 0 - OK
+#   - 1 - Warning
+#   - 2 - Critical
+#   - 3 - Unknown
+#
+# Set margin values "warn" and "crit" in milliseconds for warning and
+# critical state.
+
+warn=500
+crit=1000
+
+offset=$( { ntpq -nc peers | grep "*" | cut -c 62-66 | tr -d '-'; } 2>&1 )
+
+if [ -z "$offset" ]; then
+	echo "NTP running but not synchronized"
+	exit 3
+fi
+if [ "$offset" -eq "$offset" ] 2>/dev/null; then
+	if [ "$offset" -lt "$warn" ]; then
+		echo "OK"
+		exit 0
+	else
+		if [ "$offset" -ge "$crit" ]; then
+			echo "Critical"
+			exit 2
+		else
+			if [ "$offset" -ge "$warn" ]; then
+				echo "Warning"
+				exit 1
+			fi
+		fi
+	fi
+else
+	echo "$offset"
+	exit 3
+fi
